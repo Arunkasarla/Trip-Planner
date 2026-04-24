@@ -1,0 +1,218 @@
+<!DOCTYPE html>
+<html lang="en" data-theme="dark">
+<head>
+<meta charset="UTF-8"/>
+<meta name="viewport" content="width=device-width,initial-scale=1.0"/>
+<title>Plan Your Trip — Smart AI Trip Planner</title>
+<meta name="description" content="Create your perfect AI-generated trip itinerary with weather, maps, and real-time chatbot editing."/>
+<link rel="stylesheet" href="style.css"/>
+<link rel="stylesheet" href="https://unpkg.com/leaflet@1.9.4/dist/leaflet.css"/>
+<script src="https://unpkg.com/leaflet@1.9.4/dist/leaflet.js"></script>
+</head>
+<body>
+
+<!-- Navbar -->
+<nav class="navbar">
+  <a href="index.html" class="nav-logo">✈ TripAI</a>
+  <div class="nav-links" id="navLinks">
+    <a href="index.html">Home</a>
+    <a href="planner.html" style="color:var(--primary)">Plan Trip</a>
+    <a href="dashboard.html">Dashboard</a>
+  </div>
+  <div class="nav-actions">
+    <button class="theme-toggle" id="themeToggle">🌙</button>
+    <span id="userGreeting" style="font-size:.85rem;color:var(--text-muted)"></span>
+    <button class="btn btn-sm btn-outline" id="authBtn" onclick="openAuthModal()">Login</button>
+    <button class="hamburger" id="hamburger"><span></span><span></span><span></span></button>
+  </div>
+</nav>
+
+<!-- Auth Modal -->
+<div class="modal-overlay" id="authModal">
+  <div class="modal">
+    <h2 class="modal-title">🔐 Welcome Back</h2>
+    <div style="display:flex;gap:.5rem;margin-bottom:1.5rem">
+      <button class="btn btn-primary btn-sm" id="tabLogin" onclick="switchTab('login')" style="flex:1">Login</button>
+      <button class="btn btn-outline btn-sm" id="tabRegister" onclick="switchTab('register')" style="flex:1">Register</button>
+    </div>
+    <div id="loginForm">
+      <div class="form-group"><label>Email</label><input type="email" id="loginEmail" placeholder="you@example.com"/></div>
+      <div class="form-group"><label>Password</label><input type="password" id="loginPassword" placeholder="••••••••"/></div>
+      <button class="btn btn-primary" style="width:100%;margin-top:.5rem" onclick="doLogin()">Login →</button>
+    </div>
+    <div id="registerForm" style="display:none">
+      <div class="form-group"><label>Name</label><input type="text" id="regName" placeholder="Your name"/></div>
+      <div class="form-group"><label>Email</label><input type="email" id="regEmail" placeholder="you@example.com"/></div>
+      <div class="form-group"><label>Password</label><input type="password" id="regPassword" placeholder="Min 8 characters"/></div>
+      <button class="btn btn-primary" style="width:100%;margin-top:.5rem" onclick="doRegister()">Create Account →</button>
+    </div>
+    <button class="btn btn-outline btn-sm" style="width:100%;margin-top:1rem" onclick="closeAuthModal()">Cancel</button>
+  </div>
+</div>
+
+<!-- Main Layout -->
+<div class="planner-layout">
+
+  <!-- LEFT: Form Sidebar -->
+  <aside class="planner-sidebar">
+    <h1 style="font-family:'Outfit',sans-serif;font-size:1.5rem;font-weight:800;margin-bottom:1.5rem">
+      🗺 Plan Your Trip
+    </h1>
+
+    <div class="form-group">
+      <label>Starting Location</label>
+      <input type="text" id="startLocation" placeholder="e.g. Mumbai, Delhi" value="India"/>
+    </div>
+
+    <div class="form-group">
+      <label>Budget (₹)</label>
+      <input type="number" id="budget" placeholder="e.g. 20000" value="20000" min="1000"/>
+    </div>
+
+    <div style="display:grid;grid-template-columns:1fr 1fr;gap:1rem">
+      <div class="form-group">
+        <label>Days</label>
+        <input type="number" id="days" placeholder="3" value="3" min="1" max="30"/>
+      </div>
+      <div class="form-group">
+        <label>Travelers</label>
+        <input type="number" id="travelers" placeholder="2" value="2" min="1"/>
+      </div>
+    </div>
+
+    <div class="form-group">
+      <label>Travel Month</label>
+      <select id="month">
+        <option>Jan</option><option>Feb</option><option>Mar</option>
+        <option>Apr</option><option>May</option><option selected>Jun</option>
+        <option>Jul</option><option>Aug</option><option>Sep</option>
+        <option>Oct</option><option>Nov</option><option>Dec</option>
+      </select>
+    </div>
+
+    <div class="form-group">
+      <label>Travel Style</label>
+      <select id="style">
+        <option value="budget">Budget</option>
+        <option value="luxury">Luxury</option>
+        <option value="family">Family</option>
+        <option value="solo">Solo</option>
+      </select>
+    </div>
+
+    <div class="form-group">
+      <label>Interests (pick any)</label>
+      <div class="chips" id="interestChips">
+        <button class="chip active" data-val="Beach">🏖 Beach</button>
+        <button class="chip" data-val="Adventure">🧗 Adventure</button>
+        <button class="chip" data-val="Nature">🌿 Nature</button>
+        <button class="chip" data-val="Temple">🛕 Temple</button>
+        <button class="chip" data-val="Nightlife">🌃 Nightlife</button>
+        <button class="chip" data-val="Shopping">🛍 Shopping</button>
+        <button class="chip" data-val="Trekking">⛰ Trekking</button>
+        <button class="chip" data-val="Wildlife">🐅 Wildlife</button>
+      </div>
+    </div>
+
+    <button class="btn btn-primary" style="width:100%;margin-top:1rem;padding:1rem;font-size:1rem" id="generateBtn" onclick="generateTrip()">
+      🚀 Generate My Trip
+    </button>
+
+    <!-- Current Trip Summary (after generation) -->
+    <div id="tripSummaryBox" style="display:none;margin-top:1.5rem;padding:1rem;background:rgba(99,102,241,0.1);border:1px solid rgba(99,102,241,0.3);border-radius:var(--radius-sm)">
+      <div style="font-weight:700;margin-bottom:.5rem">Current Trip</div>
+      <div id="tripSummaryText" style="font-size:.85rem;color:var(--text-muted)"></div>
+      <div style="display:flex;gap:.5rem;margin-top:1rem;flex-wrap:wrap">
+        <button class="btn btn-success btn-sm" onclick="saveTrip()">💾 Save</button>
+        <button class="btn btn-outline btn-sm" onclick="downloadPDF()">📄 PDF</button>
+        <a href="dashboard.html" class="btn btn-outline btn-sm">📊 Dashboard</a>
+      </div>
+    </div>
+  </aside>
+
+  <!-- RIGHT: Results Panel -->
+  <main class="planner-main" id="resultsPanel">
+
+    <!-- Placeholder before generation -->
+    <div id="placeholderState" style="display:flex;flex-direction:column;align-items:center;justify-content:center;min-height:60vh;text-align:center;color:var(--text-muted)">
+      <div style="font-size:5rem;margin-bottom:1.5rem">🌍</div>
+      <h2 style="font-size:1.5rem;font-weight:700;margin-bottom:.75rem;color:var(--text)">Your Itinerary Will Appear Here</h2>
+      <p style="max-width:400px;line-height:1.6">Fill in the form on the left and click <strong>Generate My Trip</strong> to get a complete AI-powered travel plan.</p>
+    </div>
+
+    <!-- Loading state -->
+    <div id="loadingState" style="display:none">
+      <div class="loader">
+        <div class="spinner"></div>
+        <div class="loader-text" id="loadingText">🤖 AI is planning your trip...</div>
+      </div>
+    </div>
+
+    <!-- Results (shown after generation) -->
+    <div id="resultsState" style="display:none">
+
+      <!-- Destination Banner -->
+      <div class="dest-banner result-section" id="destBanner">
+        <div class="dest-name" id="destName">—</div>
+        <div class="dest-meta" id="destMeta"></div>
+        <div class="cost-highlight" id="totalCost"></div>
+      </div>
+
+      <!-- Tips -->
+      <div class="tips-list" id="tipsList"></div>
+
+      <!-- Attractions -->
+      <div style="margin-bottom:1rem;font-weight:700;font-size:.9rem;color:var(--text-muted);text-transform:uppercase;letter-spacing:.05em">🏛 Top Attractions</div>
+      <div class="attractions-list" id="attractionsList"></div>
+
+      <!-- Hotels -->
+      <div style="margin-bottom:1rem;font-weight:700;font-size:.9rem;color:var(--text-muted);text-transform:uppercase;letter-spacing:.05em">🏨 Recommended Hotels</div>
+      <div class="hotels-grid" id="hotelsList"></div>
+
+      <!-- Weather -->
+      <div style="margin-bottom:1rem;font-weight:700;font-size:.9rem;color:var(--text-muted);text-transform:uppercase;letter-spacing:.05em">🌤 Weather</div>
+      <div class="glass weather-widget" id="weatherWidget">
+        <div class="loader"><div class="spinner"></div><div class="loader-text">Loading weather...</div></div>
+      </div>
+
+      <!-- Map -->
+      <div style="margin-bottom:1rem;font-weight:700;font-size:.9rem;color:var(--text-muted);text-transform:uppercase;letter-spacing:.05em">🗺 Map</div>
+      <div id="map"></div>
+
+      <!-- Itinerary -->
+      <div style="margin-bottom:1rem;font-weight:700;font-size:.9rem;color:var(--text-muted);text-transform:uppercase;letter-spacing:.05em">📅 Day-wise Itinerary</div>
+      <div id="itineraryCards"></div>
+
+    </div><!-- /resultsState -->
+  </main>
+</div>
+
+<!-- Chatbot FAB -->
+<button class="chat-fab" id="chatFab" onclick="toggleChat()" title="AI Trip Assistant">💬</button>
+
+<!-- Chatbot Panel -->
+<div class="chat-panel" id="chatPanel">
+  <div class="chat-header">
+    <div class="chat-title"><div class="chat-dot"></div> AI Trip Assistant</div>
+    <button onclick="toggleChat()" style="background:none;border:none;color:var(--text-muted);cursor:pointer;font-size:1.2rem">✕</button>
+  </div>
+  <div class="chat-messages" id="chatMessages">
+    <div class="msg msg-bot">👋 Hi! I can modify your trip. Try:<br/>
+      • "Remove beach from day 2"<br/>
+      • "Make the trip cheaper"<br/>
+      • "Add one more day"<br/>
+      • "Add nightlife on last day"
+    </div>
+  </div>
+  <div class="chat-input-row">
+    <input class="chat-input" id="chatInput" placeholder="Type your request..." onkeydown="if(event.key==='Enter')sendChatMessage()"/>
+    <button class="chat-send" id="chatSend" onclick="sendChatMessage()">Send</button>
+  </div>
+</div>
+
+<!-- Toast -->
+<div class="toast-container" id="toastContainer"></div>
+
+<script src="script.js"></script>
+</body>
+</html>

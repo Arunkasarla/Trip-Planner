@@ -1,0 +1,131 @@
+<!DOCTYPE html>
+<html lang="en" data-theme="dark">
+<head>
+<meta charset="UTF-8"/>
+<meta name="viewport" content="width=device-width,initial-scale=1.0"/>
+<title>Dashboard — Smart AI Trip Planner</title>
+<meta name="description" content="View your saved trips, history, and favorite destinations."/>
+<link rel="stylesheet" href="style.css"/>
+<script src="https://cdnjs.cloudflare.com/ajax/libs/jspdf/2.5.1/jspdf.umd.min.js"></script>
+</head>
+<body>
+
+<nav class="navbar">
+  <a href="index.html" class="nav-logo">✈ TripAI</a>
+  <div class="nav-links" id="navLinks">
+    <a href="index.html">Home</a>
+    <a href="planner.html">Plan Trip</a>
+    <a href="dashboard.html" style="color:var(--primary)">Dashboard</a>
+  </div>
+  <div class="nav-actions">
+    <button class="theme-toggle" id="themeToggle">🌙</button>
+    <span id="userGreeting" style="font-size:.85rem;color:var(--text-muted)"></span>
+    <button class="btn btn-sm btn-outline" id="authBtn" onclick="handleAuthAction()">Login</button>
+    <button class="hamburger" id="hamburger"><span></span><span></span><span></span></button>
+  </div>
+</nav>
+
+<div class="dashboard-layout">
+
+  <!-- Header -->
+  <div class="dashboard-header">
+    <div class="dashboard-greeting" id="dashGreeting">👋 Your Dashboard</div>
+    <p style="color:var(--text-muted)">Manage your saved trips, history &amp; favorites</p>
+  </div>
+
+  <!-- Quick Actions -->
+  <div style="display:flex;gap:1rem;flex-wrap:wrap;margin-bottom:2rem">
+    <a href="planner.html" class="btn btn-primary">➕ New Trip</a>
+    <button class="btn btn-outline" onclick="loadTripHistory()">🔄 Refresh</button>
+    <button class="btn btn-outline" id="logoutBtn" onclick="doLogout()" style="display:none">🚪 Logout</button>
+  </div>
+
+  <!-- Stats Row -->
+  <div class="grid grid-4" style="margin-bottom:2rem" id="statsRow">
+    <div class="glass card" style="text-align:center">
+      <div style="font-size:2rem;font-weight:800;background:var(--gradient);-webkit-background-clip:text;-webkit-text-fill-color:transparent" id="statTotal">0</div>
+      <div style="color:var(--text-muted);font-size:.85rem">Total Trips</div>
+    </div>
+    <div class="glass card" style="text-align:center">
+      <div style="font-size:2rem;font-weight:800;color:var(--success)" id="statDest">0</div>
+      <div style="color:var(--text-muted);font-size:.85rem">Destinations</div>
+    </div>
+    <div class="glass card" style="text-align:center">
+      <div style="font-size:2rem;font-weight:800;color:var(--accent)" id="statDays">0</div>
+      <div style="color:var(--text-muted);font-size:.85rem">Days Planned</div>
+    </div>
+    <div class="glass card" style="text-align:center">
+      <div style="font-size:2rem;font-weight:800;color:var(--secondary)" id="statBudget">₹0</div>
+      <div style="color:var(--text-muted);font-size:.85rem">Total Budget</div>
+    </div>
+  </div>
+
+  <!-- Not Logged In State -->
+  <div id="notLoggedIn" style="display:none;text-align:center;padding:4rem 2rem">
+    <div style="font-size:4rem;margin-bottom:1rem">🔐</div>
+    <h2 style="margin-bottom:.75rem">Login to View Your Trips</h2>
+    <p style="color:var(--text-muted);margin-bottom:1.5rem">Your saved trips and history require an account.</p>
+    <a href="planner.html" class="btn btn-primary">Go to Planner</a>
+  </div>
+
+  <!-- Loading -->
+  <div id="dashLoading" style="display:none">
+    <div class="loader"><div class="spinner"></div><div class="loader-text">Loading your trips...</div></div>
+  </div>
+
+  <!-- Saved Trips Grid -->
+  <div id="tripsSection" style="display:none">
+    <h2 style="font-family:'Outfit',sans-serif;font-size:1.4rem;font-weight:700;margin-bottom:1.25rem">🗺 Saved Trips</h2>
+    <div class="trip-grid" id="tripGrid"></div>
+  </div>
+
+  <!-- Empty State -->
+  <div id="emptyState" style="display:none;text-align:center;padding:4rem 2rem">
+    <div style="font-size:4rem;margin-bottom:1rem">✈️</div>
+    <h2 style="margin-bottom:.75rem">No Trips Saved Yet</h2>
+    <p style="color:var(--text-muted);margin-bottom:1.5rem">Plan your first trip and save it here!</p>
+    <a href="planner.html" class="btn btn-primary">🚀 Plan a Trip</a>
+  </div>
+
+  <!-- Trip Detail Modal -->
+  <div class="modal-overlay" id="tripModal">
+    <div class="modal" style="max-width:700px;width:95%;max-height:85vh;overflow-y:auto">
+      <div style="display:flex;align-items:center;justify-content:space-between;margin-bottom:1.5rem">
+        <h2 class="modal-title" id="modalTitle" style="margin:0">Trip Details</h2>
+        <button onclick="closeTripModal()" style="background:none;border:none;color:var(--text-muted);cursor:pointer;font-size:1.5rem">✕</button>
+      </div>
+      <div id="modalContent"></div>
+      <div style="display:flex;gap:.75rem;margin-top:1.5rem;flex-wrap:wrap">
+        <button class="btn btn-primary btn-sm" onclick="loadTripInPlanner()">✏️ Edit in Planner</button>
+        <button class="btn btn-outline btn-sm" onclick="exportModalPDF()">📄 Export PDF</button>
+        <button class="btn btn-danger btn-sm" onclick="deleteTripFromModal()">🗑 Delete</button>
+        <button class="btn btn-outline btn-sm" onclick="closeTripModal()">Close</button>
+      </div>
+    </div>
+  </div>
+
+</div>
+
+<div class="toast-container" id="toastContainer"></div>
+<script src="script.js"></script>
+<script>
+  document.addEventListener('DOMContentLoaded', () => {
+    const token = localStorage.getItem('token');
+    const name  = localStorage.getItem('userName');
+    if (token && name) {
+      document.getElementById('dashGreeting').textContent = `👋 Welcome back, ${name}!`;
+      document.getElementById('authBtn').textContent = 'Logout';
+      document.getElementById('logoutBtn').style.display = 'inline-flex';
+      loadTripHistory();
+    } else {
+      document.getElementById('notLoggedIn').style.display = 'block';
+    }
+  });
+
+  function handleAuthAction() {
+    if (localStorage.getItem('token')) doLogout();
+    else window.location.href = 'planner.html';
+  }
+</script>
+</body>
+</html>
